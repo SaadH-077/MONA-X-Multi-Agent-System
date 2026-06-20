@@ -435,10 +435,9 @@ export default function AgentRunner({ slug }: { slug: string }) {
             )}
           </div>
 
-          {/* The ACTION each agent takes (pricing, gap & secure embed their own) */}
-          {slug !== "pricing" && slug !== "gap" && slug !== "email-secure" && (
-            <ActionBar slug={slug} raw={output} parsed={parseJson(output)} />
-          )}
+          {/* Every agent's downloadable action(s). Pricing/gap/secure also keep
+              their interactive widgets inside their result components above. */}
+          <ActionBar slug={slug} raw={output} parsed={parseJson(output)} />
 
           {slug === "interview" && (text || file) && (
             <Flashcards context={text || file?.name || ""} />
