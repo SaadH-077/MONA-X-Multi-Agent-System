@@ -277,6 +277,19 @@ export default function AgentRunner({ slug }: { slug: string }) {
             }}
           />
         )}
+        {slug === "email-secure" && (
+          <EmailIntake
+            mode="secure"
+            onText={(body) => {
+              setText(body);
+              setFile(null);
+            }}
+            onFile={(f) => {
+              setFile(f);
+              setText("");
+            }}
+          />
+        )}
         {agent.builder === "shift" && <ShiftBuilder onCompose={setText} />}
 
         {showText && (

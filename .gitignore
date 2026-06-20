@@ -37,6 +37,10 @@ yarn-error.log*
 /hackathon_problems_20260620/
 server.log
 
+# Google OAuth client secret file — NEVER commit
+client_secret_*.json
+.sessions/
+
 # vercel
 .vercel
 

@@ -15,6 +15,7 @@ type GmailEmail = {
   subject: string;
   date: string;
   snippet: string;
+  bodyText: string;
   attachments: GmailAttachment[];
 };
 
@@ -45,9 +46,11 @@ Net €1,957.26  VAT 23% €450.17  Total €2,407.43`,
 export default function EmailIntake({
   onText,
   onFile,
+  mode = "invoice",
 }: {
   onText: (body: string) => void;
   onFile: (f: { data: string; mimeType: string; name: string }) => void;
+  mode?: "invoice" | "secure";
 }) {
   const [open, setOpen] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -131,37 +134,64 @@ export default function EmailIntake({
 
           {/* Real emails */}
           {connected &&
-            emails.map((e) => (
-              <div key={e.id} className="border-t border-border/60 px-4 py-3">
-                <p className="truncate text-sm font-medium">{e.subject}</p>
-                <p className="truncate text-xs text-muted">{e.from}</p>
-                <div className="mt-1.5 flex flex-wrap gap-2">
-                  {e.attachments.map((a) => (
-                    <button
-                      key={a.attachmentId}
-                      onClick={() => pickReal(e, a)}
-                      disabled={fetchingId === e.id + a.attachmentId}
-                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs text-accent hover:border-accent disabled:opacity-50"
-                    >
-                      {fetchingId === e.id + a.attachmentId ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Paperclip className="h-3 w-3" />
-                      )}
-                      {a.filename}
-                    </button>
-                  ))}
+            emails.map((e) =>
+              mode === "secure" ? (
+                <button
+                  key={e.id}
+                  onClick={() =>
+                    onText(
+                      `From: ${e.from}\nSubject: ${e.subject}\n\n${e.bodyText}\n\nAttachments: ${
+                        e.attachments.map((a) => a.filename).join(", ") || "(none)"
+                      }`,
+                    )
+                  }
+                  className="flex w-full items-start gap-3 border-t border-border/60 px-4 py-3 text-left hover:bg-surface-2"
+                >
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
+                    {(e.from[0] || "?").toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{e.subject}</p>
+                    <p className="truncate text-xs text-muted">{e.from}</p>
+                    <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-accent">
+                      <Paperclip className="h-3 w-3" /> {e.attachments.length} attachment(s)
+                    </p>
+                  </div>
+                  <span className="shrink-0 self-center text-xs text-accent">Scan →</span>
+                </button>
+              ) : (
+                <div key={e.id} className="border-t border-border/60 px-4 py-3">
+                  <p className="truncate text-sm font-medium">{e.subject}</p>
+                  <p className="truncate text-xs text-muted">{e.from}</p>
+                  <div className="mt-1.5 flex flex-wrap gap-2">
+                    {e.attachments.map((a) => (
+                      <button
+                        key={a.attachmentId}
+                        onClick={() => pickReal(e, a)}
+                        disabled={fetchingId === e.id + a.attachmentId}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs text-accent hover:border-accent disabled:opacity-50"
+                      >
+                        {fetchingId === e.id + a.attachmentId ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Paperclip className="h-3 w-3" />
+                        )}
+                        {a.filename}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ),
+            )}
           {connected && emails.length === 0 && !loading && (
             <p className="border-t border-border/60 px-4 py-3 text-xs text-muted">
               No emails with invoice attachments found in this inbox.
             </p>
           )}
 
-          {/* Demo fallback */}
+          {/* Demo fallback (invoice mode only) */}
           {!connected &&
+            mode === "invoice" &&
             DEMO.map((e, i) => (
               <button
                 key={i}

@@ -101,10 +101,34 @@ export type GmailMessage = {
   subject: string;
   date: string;
   snippet: string;
+  bodyText: string;
   attachments: { filename: string; mimeType: string; attachmentId: string }[];
 };
 
-/** Recent messages that carry an invoice-like attachment. */
+const b64urlDecode = (s: string) => {
+  try {
+    return Buffer.from(s.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+  } catch {
+    return "";
+  }
+};
+
+/** Walk MIME parts to pull the plain-text body (falls back to stripped HTML). */
+function extractBody(part: Part): string {
+  if (part.mimeType === "text/plain" && part.body?.data) return b64urlDecode(part.body.data);
+  if (part.parts) {
+    for (const p of part.parts) {
+      const t = extractBody(p);
+      if (t) return t;
+    }
+  }
+  if (part.mimeType === "text/html" && part.body?.data) {
+    return b64urlDecode(part.body.data).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  }
+  return "";
+}
+
+/** Recent messages with attachments (invoices, applicant docs, …). */
 export async function listInvoiceEmails(token: string, max = 12): Promise<GmailMessage[]> {
   const list = await gget(token, `/messages?q=has:attachment&maxResults=${max}`);
   const ids: { id: string }[] = list.messages ?? [];
@@ -121,6 +145,7 @@ export async function listInvoiceEmails(token: string, max = 12): Promise<GmailM
       subject: header(headers, "Subject") || "(no subject)",
       date: header(headers, "Date"),
       snippet: m.snippet ?? "",
+      bodyText: (m.payload ? extractBody(m.payload) : "") || m.snippet || "",
       attachments: att,
     });
   }
