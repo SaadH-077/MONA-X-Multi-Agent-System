@@ -96,6 +96,10 @@ async function callLLM(opts: {
   body.generationConfig = {
     temperature: 0.3,
     maxOutputTokens: 8192,
+    // Gemini 2.5 Flash does internal "thinking" that consumes the output-token
+    // budget and was truncating our responses mid-JSON. Disable it: full budget
+    // goes to the actual answer, and responses are faster.
+    thinkingConfig: { thinkingBudget: 0 },
     ...(opts.json ? { responseMimeType: "application/json" } : {}),
   };
   const payload = JSON.stringify(body);

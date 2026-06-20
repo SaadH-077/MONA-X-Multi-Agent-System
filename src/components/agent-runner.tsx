@@ -20,6 +20,44 @@ import { useLang } from "@/components/language-provider";
 import ReelPreview from "@/components/reel-preview";
 import ShiftBuilder from "@/components/shift-builder";
 import AgentChart from "@/components/agent-chart";
+import InvoiceResult from "@/components/results/invoice-result";
+import ShiftResult from "@/components/results/shift-result";
+import Flashcards from "@/components/flashcards";
+import EmailIntake from "@/components/email-intake";
+
+/** Tolerant JSON extraction. Handles raw JSON, ```fences```, and arrays
+   (takes the first object — e.g. a manifest CSV listing several invoices). */
+function parseJson<T>(raw: string): T | null {
+  const tryParse = (s: string): unknown => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return undefined;
+    }
+  };
+  const unwrap = (v: unknown): T | null => {
+    if (Array.isArray(v)) return (v[0] as T) ?? null;
+    if (v && typeof v === "object") return v as T;
+    return null;
+  };
+  // 1) direct (JSON mode returns clean JSON)
+  let v = tryParse(raw.trim());
+  if (v !== undefined) return unwrap(v);
+  // 2) fenced
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) {
+    v = tryParse(fenced[1].trim());
+    if (v !== undefined) return unwrap(v);
+  }
+  // 3) substring between first/last brace or bracket
+  const s = raw.search(/[[{]/);
+  const e = Math.max(raw.lastIndexOf("}"), raw.lastIndexOf("]"));
+  if (s !== -1 && e !== -1 && e > s) {
+    v = tryParse(raw.slice(s, e + 1));
+    if (v !== undefined) return unwrap(v);
+  }
+  return null;
+}
 
 type HistEntry = {
   ts: number;
@@ -223,6 +261,7 @@ export default function AgentRunner({ slug }: { slug: string }) {
 
       {/* Input */}
       <div className="glass space-y-3 rounded-2xl p-5">
+        {slug === "invoice" && <EmailIntake onPick={setText} />}
         {agent.builder === "shift" && <ShiftBuilder onCompose={setText} />}
 
         {showText && (
@@ -321,10 +360,17 @@ export default function AgentRunner({ slug }: { slug: string }) {
           <div className="glass rounded-2xl p-6">
             {agent.kind === "reel" ? (
               <ReelRenderer raw={output} />
+            ) : agent.kind === "invoice" ? (
+              <StructuredOr raw={output} render={(d) => <InvoiceResult data={d} />} />
+            ) : agent.kind === "shift" ? (
+              <StructuredOr raw={output} render={(d) => <ShiftResult data={d} />} />
             ) : (
               <Md>{output}</Md>
             )}
           </div>
+          {slug === "interview" && (text || file) && (
+            <Flashcards context={text || file?.name || ""} />
+          )}
         </div>
       )}
     </div>
@@ -342,6 +388,21 @@ function ReelRenderer({ raw }: { raw: string }) {
   } catch {
     return <Md>{raw}</Md>;
   }
+}
+
+// Render structured JSON with a dedicated component; if parsing fails, fall
+// back to showing the raw text so nothing is ever lost.
+function StructuredOr({
+  raw,
+  render,
+}: {
+  raw: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  render: (data: any) => React.ReactNode;
+}) {
+  const data = parseJson<unknown>(raw);
+  if (data) return <>{render(data)}</>;
+  return <Md>{raw}</Md>;
 }
 
 function Md({ children }: { children: string }) {

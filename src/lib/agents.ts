@@ -30,7 +30,7 @@ export type Agent = {
   textLabel?: string;
   filePrompt?: string;
   fileAccept?: string;
-  kind: "markdown" | "reel";
+  kind: "markdown" | "reel" | "invoice" | "shift";
   json?: boolean;
   sample?: string;
   quickFills?: { label: string; value: string }[];
@@ -107,60 +107,66 @@ export const AGENTS: Agent[] = [
     textLabel: "Paste invoice text (or upload the invoice file)",
     filePrompt: "Upload an invoice — PDF, image, Word (DOCX), Excel (XLSX) or CSV",
     fileAccept: "image/*,.pdf,.docx,.xlsx,.xls,.csv",
-    kind: "markdown",
+    kind: "invoice",
+    json: true,
     sample:
       "RECHNUNG Nr. 2026-0481\nLieferant: Saar Büromaterial GmbH, Saarbrücken\nDatum: 12.06.2026  Fällig: 26.06.2026\nUSt-IdNr: DE123456789\nPos 1: 5x Bürostühle  á 189,00 = 945,00\nPos 2: 10x Druckerpapier á 4,20 = 42,00\nNetto 987,00  MwSt 19% 187,53  Gesamt 1.174,53 EUR\nBestellnr (PO): fehlt",
-    system: `You are an invoice-processing agent for the Globus Group finance team (buried in supplier invoices done by hand). Invoices arrive as PDF, scanned image (sometimes low quality — grey photocopies, faded, coffee-stained, photographed at an angle), Word/DOCX, Excel/CSV — in GERMAN or ENGLISH, in EUR or USD. Read carefully, handle both languages, and normalise numbers (German format 1.234,56 = 1234.56).
+    system: `You are an invoice-processing agent for the Globus Group finance team (buried in supplier invoices done by hand). Invoices arrive as PDF, scanned image (sometimes low quality — grey photocopies, faded, coffee-stained, photographed at an angle), Word/DOCX, Excel/CSV — in GERMAN or ENGLISH, in EUR or USD. Read carefully, handle both languages, and normalise German numbers (1.234,56 = 1234.56). EXTRACT EVERY FIELD YOU CAN SEE — do not summarise away the details.
 
-Write for a NON-TECHNICAL finance clerk. Use clear markdown in this exact order:
-
-## 🧾 Summary
-One friendly sentence: what this invoice is, from whom, for how much, and where it's going. Then a bold headline line:
-**Status:** ✅ Ready to approve / ⚠️ Needs review · **Total:** <gross with currency> · **Department:** <dept>
-
-## Key details
-A two-column table (Field | Value) — extract EVERYTHING you can find:
-Supplier name · Supplier address · Supplier VAT ID · Invoice number · Purchase order (PO) number · Invoice date · Due date · Currency · **Amount before tax (net)** · **Tax / VAT (rate % and amount)** · **Amount after tax (gross / total due)** · Payment terms · IBAN/Bank if shown. Put "—" for anything genuinely absent.
-
-## Line items
-A table: Description | Qty | Unit price | Total. Summarise if very long.
-
-## 📍 Department routing
-State the department in bold, then **Why:** a one–two sentence justification naming the CRITERIA you used (what on the invoice told you — the vendor, the line items, the service type). Choose from:
-- **IT** → software, licenses, cloud, hardware, subscriptions
-- **Facilities / Utilities** → gas, electricity, water, internet/telephone, rent
-- **Procurement / Office** → office supplies, furniture, stationery
-- **Travel / Expenses** → hotels, flights, meals
-- **Operations / Finance** → consulting & professional services
-- **Other** → anything else (say what)
-
-## ✅ Validation
-Bullet checks, each with ✅ or ⚠️: recompute net × (1 + VAT%) = gross and confirm or flag the mismatch; PO present?; VAT ID present?; any unreadable field?; currency (if not EUR, note FX conversion needed). End with **Next step:** who should confirm it.
-
-Never invent values you can't see — write "—" or "unreadable" instead.`,
+Respond with ONLY valid JSON (no prose, no markdown fences) in EXACTLY this shape:
+{
+  "summary": "one friendly sentence: what this is, from whom, for how much, where it goes",
+  "status": "approve" | "review",
+  "supplier": {"name": string|null, "address": string|null, "vatId": string|null, "iban": string|null},
+  "invoiceNumber": string|null,
+  "poNumber": string|null,
+  "invoiceDate": string|null,
+  "dueDate": string|null,
+  "currency": string|null,
+  "amounts": {"net": string|null, "vatRate": string|null, "vatAmount": string|null, "gross": string|null},
+  "paymentTerms": string|null,
+  "lineItems": [{"description": string, "qty": string|null, "unitPrice": string|null, "total": string|null}],
+  "department": {"name": "IT"|"Facilities / Utilities"|"Procurement / Office"|"Travel / Expenses"|"Operations / Finance"|"Other", "confidence": 0.0-1.0, "reason": "one-two sentences naming the CRITERIA used (vendor, line items, service type)"},
+  "validation": {"checks": [{"label": string, "ok": true|false, "note": string}], "verdict": "one-line overall verdict", "nextStep": "who should confirm it"},
+  "duplicateKey": "vendor|date|gross lowercased, for duplicate detection",
+  "confidence": 0.0-1.0
+}
+Routing guide: IT → software/licenses/cloud/hardware/subscriptions; Facilities / Utilities → gas/electricity/water/internet/telephone/rent; Procurement / Office → office supplies/furniture; Travel / Expenses → hotels/flights/meals; Operations / Finance → consulting & professional services.
+Validation checks MUST include: recompute net×(1+VAT%)=gross (ok=true if it matches), PO number present, VAT ID present, currency (flag if not EUR → FX needed), any unreadable field. Use null for genuinely absent fields; never invent values.`,
     buildPrompt: (text, hasFile) =>
       hasFile
-        ? "Process the attached supplier invoice."
-        : `Process this supplier invoice:\n\n${text}`,
-    demo: `**Supplier:** Saar Büromaterial GmbH, Saarbrücken
-**Invoice #:** 2026-0481 · **Date:** 12.06.2026 · **Due:** 26.06.2026
-**Net:** €987.00 · **VAT (19%):** €187.53 · **Gross:** €1,174.53 · **VAT ID:** DE123456789
-
-| Item | Qty | Unit | Total |
-|---|---|---|---|
-| Bürostühle (office chairs) | 5 | €189.00 | €945.00 |
-| Druckerpapier (printer paper) | 10 | €4.20 | €42.00 |
-
-**Route to → Facilities / Office Procurement** — office furniture & supplies.
-
-**Validation: ⚠️ Needs review**
-- ❌ **Missing PO number** — finance policy requires a purchase order.
-- ✅ VAT math checks out: 987.00 × 19% = 187.53; net + VAT = 1,174.53.
-- ✅ Valid VAT ID present.
-
-**Next step:** Send to the Facilities approver to attach a PO, then auto-approve.
-
-*Demo output — add GEMINI_API_KEY for live processing of any invoice.*`,
+        ? "Process the attached supplier invoice. Extract every field."
+        : `Process this supplier invoice. Extract every field:\n\n${text}`,
+    demo: JSON.stringify({
+      summary:
+        "Office-supplies invoice from Saar Büromaterial GmbH for €1,174.53, routed to Procurement for approval.",
+      status: "review",
+      supplier: { name: "Saar Büromaterial GmbH, Saarbrücken", address: "Saarbrücken", vatId: "DE123456789", iban: null },
+      invoiceNumber: "2026-0481",
+      poNumber: null,
+      invoiceDate: "12.06.2026",
+      dueDate: "26.06.2026",
+      currency: "EUR",
+      amounts: { net: "987.00", vatRate: "19%", vatAmount: "187.53", gross: "1174.53" },
+      paymentTerms: null,
+      lineItems: [
+        { description: "Bürostühle (office chairs)", qty: "5", unitPrice: "189.00", total: "945.00" },
+        { description: "Druckerpapier (printer paper)", qty: "10", unitPrice: "4.20", total: "42.00" },
+      ],
+      department: { name: "Procurement / Office", confidence: 0.93, reason: "Line items are office furniture and stationery from an office-supplies vendor." },
+      validation: {
+        checks: [
+          { label: "VAT math (987 × 19% = 187.53)", ok: true, note: "net + VAT = 1,174.53 ✓" },
+          { label: "PO number present", ok: false, note: "No purchase order found" },
+          { label: "VAT ID present", ok: true, note: "DE123456789" },
+          { label: "Currency", ok: true, note: "EUR" },
+        ],
+        verdict: "Needs review — missing PO number",
+        nextStep: "Send to the Procurement approver to attach a PO, then auto-approve.",
+      },
+      duplicateKey: "saar büromaterial gmbh|12.06.2026|1174.53",
+      confidence: 0.9,
+    }),
   },
 
   {
@@ -175,7 +181,8 @@ Never invent values you can't see — write "—" or "unreadable" instead.`,
     inputMode: "text",
     builder: "shift",
     textLabel: "Your message to the agent",
-    kind: "markdown",
+    kind: "shift",
+    json: true,
     sample:
       "Felix Haddad (HOSP-1059), ICU Registered Nurse, just called in sick for TONIGHT's night shift (19:00–07:00, Sat 06/20). The shift needs BLS + ACLS (ICU competency). Who can cover?",
     quickFills: [
@@ -208,25 +215,32 @@ Among eligible staff, rank best-first by tie-breakers: Overtime OK = Yes, more h
 Staff data — one per line: ID | Name | Role | Dept | certs | Contract | max | pref | OT | Status | Fri | Sat(today) | Sun | next7d | (notes):
 ${STAFF_DATA}
 
-Output easy-to-read markdown for a non-technical coordinator:
-**Gap** — one line restating it.
-**✅ Top picks** — table: # | Name | Dept | Certs | Headroom | OT | Why best (rank 3–5 eligible, best first).
-**Excluded** — 3–4 near-misses with the ONE rule each fails.
-**Drafted message** — a short, ready-to-send SMS for the #1 pick + a backup, filled with the shift details.
-**Recommended action** — who to call first and the fallback.
-Use ONLY people from the data above; apply the 6 rules strictly.`,
+Use ONLY people from the data above; apply the 6 rules strictly. Respond with ONLY valid JSON (no prose, no fences) in EXACTLY this shape:
+{
+  "gap": "one-line restatement of the shift to cover",
+  "candidates": [
+    {"name": string, "dept": string, "certs": string, "headroomHrs": number, "overtimeOk": true|false, "contract": string, "phone": string, "score": 0-100, "why": "why they're a good fit"}
+  ],
+  "excluded": [{"name": string, "reason": "the ONE rule they fail"}],
+  "draftedMessage": "a short ready-to-send SMS for the #1 pick, with the shift details filled in",
+  "backupMessage": "SMS for the backup pick",
+  "recommendation": "who to contact first and the fallback"
+}
+Rank 3–5 eligible candidates best-first (highest score first). "headroomHrs" = Max Hrs/Week − next7d. Include 3–4 excluded near-misses. "score" reflects overall fit (certs + rest + headroom + OT willingness + persona).`,
     buildPrompt: (text) => `Coordinator message: ${text}`,
-    demo: `**Gap:** ICU night shift tonight (Sat 06/20, 19:00–07:00) — Felix Haddad out sick. Needs BLS + ACLS.
-
-| # | Name | Dept | Certs | Headroom | OT | Why best |
-|---|---|---|---|---|---|---|
-| 1 | **Best-fit RN** | ICU | BLS, ACLS | high | Yes | Off tonight, rested, ACLS, under cap |
-
-*(Live agent ranks the real 100-person roster against all 6 eligibility rules.)*
-
-**Drafted SMS** → "Hi, ICU needs cover tonight 19:00–07:00. You're our top match — can you take it? Reply YES/NO. — UKS HR"
-
-*Demo output — live with the key set.*`,
+    demo: JSON.stringify({
+      gap: "ICU night shift tonight (Sat 06/20, 19:00–07:00) — Felix Haddad out sick. Needs BLS + ACLS.",
+      candidates: [
+        { name: "Best-fit RN", dept: "ICU", certs: "BLS, ACLS", headroomHrs: 12, overtimeOk: true, contract: "Per-diem", phone: "+49 1xx xxx", score: 95, why: "Off tonight, rested, ICU+ACLS, well under weekly cap, OT willing." },
+      ],
+      excluded: [
+        { name: "On-shift RN", reason: "Already working today (not off)" },
+        { name: "New grad", reason: "Lacks ACLS certification" },
+      ],
+      draftedMessage: "Hi, ICU needs cover tonight 19:00–07:00. You're our top match — can you take it? Reply YES/NO. — UKS HR",
+      backupMessage: "Hi, are you free to cover ICU tonight 19:00–07:00? ACLS needed. YES/NO? — UKS HR",
+      recommendation: "Call the top pick first; if no reply in 10 min, message the backup.",
+    }),
   },
 
   {
