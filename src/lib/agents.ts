@@ -30,7 +30,7 @@ export type Agent = {
   textLabel?: string;
   filePrompt?: string;
   fileAccept?: string;
-  kind: "markdown" | "reel" | "invoice" | "shift" | "permit" | "pricing" | "gap" | "secure";
+  kind: "markdown" | "reel" | "invoice" | "shift" | "permit" | "pricing" | "gap" | "secure" | "analytics";
   json?: boolean;
   sample?: string;
   quickFills?: { label: string; value: string }[];
@@ -512,54 +512,47 @@ Respond with ONLY valid JSON (no prose, no fences):
       "Turns the product/segment data into customer segments, behavioural patterns, and the best send-window per segment — plus a lift-measurement plan.",
     inputMode: "both",
     webSearch: true,
+    kind: "analytics",
+    json: true,
     textLabel: "What do you want to target? (segment, product, season…)",
     filePrompt: "Optional: upload a customer CSV",
     fileAccept: ".csv,.txt,image/*",
-    kind: "markdown",
     sample:
       "We want to push the Feet line before sandal season and the warming/bath line in winter. Who do we target and when?",
     system: `You are a customer-analytics & targeting agent for Allgäuer Latschenkiefer (Dr. Theiss). Product dataset (segment + peak season are labels):
 ${SKU_DATA}
 
-Build behaviour patterns the way the brief asks: RFM (recency/frequency/monetary), season-of-purchase, and category affinity (feet-buyers vs muscle-buyers — they rarely cross). Timing signals: sandal-season spike for callus/feet SKUs (Mar–Jun); winter for warming/bath SKUs; sport calendar for Mobil/Eisspray.
+Build behaviour patterns the way the brief asks: RFM, season-of-purchase, and category affinity (feet-buyers vs muscle-buyers rarely cross). Timing signals: sandal-season spike for callus/feet SKUs (Mar–Jun); winter for warming/bath; sport calendar for Mobil/Eisspray. If "Live web-search findings" are provided below, use them to ground send-window timing.
 
-You HAVE Google Search — use it to ground timing on REAL upcoming events (this week's German weather trend, holidays, football fixtures) and cite what you found in one line.
-
-Be CONCISE so the answer is never cut off. Output markdown in this exact order:
-## 📊 Demand signal
-${CHART.trim()}
-(Put the chart here FIRST — a bar chart of relative demand by segment or by month.)
-## 🎯 Segments (RFM + affinity)
-Compact table: Segment | Likely SKUs | Feet/Muscle affinity | Value. Max 4 rows.
-## 📅 Targeting plan
-Table: Segment | SKU | Best send-window (month + day/time) | Why. Max 4 rows. Ground the timing in what you searched.
-## 🔬 Lift measurement
-2 lines: A/B with a 10% holdout control, track 4-week sales of the SKU (treatment vs control), report % lift.
-Keep total output under ~450 words. Figures are indicative/synthetic.`,
+Respond with ONLY valid JSON (no prose, no fences):
+{
+  "summary": "one line on the targeting recommendation",
+  "groundedOn": "one line citing the live signal you used (or '' if none)",
+  "demandChart": {"title": string, "data": [{"label": string, "value": number}]},
+  "segments": [{"name": string, "skus": string, "affinity": "Feet"|"Muscle"|"Mixed", "value": "Low"|"Med"|"High"}],
+  "plan": [{"segment": string, "sku": string, "window": "month + day/time", "why": string}],
+  "measurement": "how to prove lift (10% holdout control, 4-week sales treatment vs control, report % lift)"
+}
+Max 4 segments, max 4 plan rows. demandChart = 4-6 points (relative demand by segment or by month). Figures indicative/synthetic.`,
     buildPrompt: (text, hasFile) =>
       `${hasFile ? "Use the attached customer data plus the catalogue. " : ""}Request: ${text}`,
-    demo: `**Segments**
-
-| Segment | Likely SKUs | Size (est.) | Value |
-|---|---|---|---|
-| Women 30–60, sandal-prep | Hornhaut Reduziercreme, Entferner Maske | Large | High seasonal |
-| Wellness 50+ | Sole Fußbad, Fuß Butter | Medium | Steady, loyal |
-| Athletes / active | Mobil Eisspray, Mobil Gel | Medium | Spiky, sport-driven |
-| Diabetic / dry-skin | 10% Urea Fußcreme | Small | All-year, sticky |
-
-**Behavioural patterns:** strong sandal-season spike (Mar–Jun) for callus SKUs · winter demand for warming/bath · feet-buyers rarely cross to muscle SKUs (low affinity) · urea + bath = best repeat-purchase.
-
-**Targeting plan**
-
-| Segment | SKU | Best send-window | Why |
-|---|---|---|---|
-| Sandal-prep women | Hornhaut Entferner Maske | **Mar–Apr, Thu 18:00** | Beat the sandal rush; evening browse |
-| Wellness 50+ | Sole Fußbad | **Nov–Dec, Sun 10:00** | Cosy winter ritual; weekend morning |
-| Athletes | Mobil Eisspray | **sport season, matchday eve 19:00** | Recovery intent peaks around games |
-
-**Measurement:** A/B by holding a 10% control per segment; track 4-week sales of the marketed SKU (treatment vs control); report % lift + revenue. *Figures indicative/synthetic.*
-
-*Demo output — add GEMINI_API_KEY for live analysis.*`,
+    demo: JSON.stringify({
+      summary: "Push callus/feet SKUs into sandal season and warming/bath into winter, timed to real demand peaks.",
+      groundedOn: "Warm spell forecast across Germany this week → leg/cooling demand rising.",
+      demandChart: { title: "Relative demand by segment", data: [{ label: "Sandal-prep", value: 82 }, { label: "Wellness 50+", value: 55 }, { label: "Athletes", value: 64 }, { label: "Diabetic", value: 40 }] },
+      segments: [
+        { name: "Women 30–60, sandal-prep", skus: "Hornhaut Reduziercreme, Entferner Maske", affinity: "Feet", value: "High" },
+        { name: "Wellness 50+", skus: "Sole Fußbad, Fuß Butter", affinity: "Feet", value: "Med" },
+        { name: "Athletes / active", skus: "Mobil Eisspray, Mobil Gel", affinity: "Muscle", value: "Med" },
+        { name: "Diabetic / dry-skin", skus: "10% Urea Fußcreme", affinity: "Feet", value: "High" },
+      ],
+      plan: [
+        { segment: "Sandal-prep women", sku: "Hornhaut Entferner Maske", window: "Mar–Apr, Thu 18:00", why: "Beat the sandal rush; evening browse" },
+        { segment: "Wellness 50+", sku: "Sole Fußbad", window: "Nov–Dec, Sun 10:00", why: "Cosy winter ritual; weekend morning" },
+        { segment: "Athletes", sku: "Mobil Eisspray", window: "Matchday eve 19:00", why: "Recovery intent peaks around games" },
+      ],
+      measurement: "Hold a 10% control per segment; track 4-week sales of the marketed SKU (treatment vs control); report % lift + revenue.",
+    }),
   },
 
   {

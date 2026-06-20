@@ -32,9 +32,24 @@ export async function POST(req: Request) {
     }
 
     const base = agent.buildPrompt(text ?? "", !!file);
-    const prompt = docText
+    let prompt = docText
       ? `${base}\n\n--- Extracted content from ${file?.name ?? "the uploaded file"} ---\n${docText}`
       : base;
+
+    // Two-step grounding: for web-search agents that also want structured JSON,
+    // first fetch real-world signals (with Google Search), then feed those facts
+    // into the main structured call. This keeps live search AND complete output.
+    if (agent.webSearch && agent.json) {
+      try {
+        const facts = await runGemini({
+          search: true,
+          prompt: `Find current real-world signals relevant to this request (Germany, this week of ${new Date().toDateString()}): "${text ?? ""}". List 3-6 concise grounded facts — weather trend, holidays/seasonal events, football fixtures, anything timing-relevant. Max 90 words, bullet list.`,
+        });
+        prompt += `\n\n--- Live web-search findings (use these to ground timing) ---\n${facts}`;
+      } catch {
+        /* search failed — proceed without it */
+      }
+    }
 
     const output = await runGemini({
       system: agent.system,
@@ -42,7 +57,8 @@ export async function POST(req: Request) {
       file: inline,
       json: agent.json,
       language: language === "de" ? "de" : "en",
-      search: agent.webSearch,
+      // Only pass search to the main call when NOT using JSON (they're incompatible).
+      search: agent.webSearch && !agent.json,
     });
     return Response.json({ output, demo: false });
   } catch (err) {

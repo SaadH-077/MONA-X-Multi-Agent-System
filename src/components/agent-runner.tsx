@@ -27,6 +27,7 @@ import PermitResult from "@/components/results/permit-result";
 import PricingResult from "@/components/results/pricing-result";
 import GapResult from "@/components/results/gap-result";
 import SecureResult from "@/components/results/secure-result";
+import AnalyticsResult from "@/components/results/analytics-result";
 import Flashcards from "@/components/flashcards";
 import EmailIntake from "@/components/email-intake";
 import DecisionFlow from "@/components/decision-flow";
@@ -427,6 +428,8 @@ export default function AgentRunner({ slug }: { slug: string }) {
               <StructuredOr raw={output} render={(d) => <GapResult data={d} />} />
             ) : agent.kind === "secure" ? (
               <StructuredOr raw={output} render={(d) => <SecureResult data={d} />} />
+            ) : agent.kind === "analytics" ? (
+              <StructuredOr raw={output} render={(d) => <AnalyticsResult data={d} />} />
             ) : (
               <Md>{output}</Md>
             )}
