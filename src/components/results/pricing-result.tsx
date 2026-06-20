@@ -124,7 +124,8 @@ export default function PricingResult({ data }: { data: Pricing }) {
       {data.signals && data.signals.length > 0 && (
         <div className="rounded-xl border border-border p-4">
           <p className="mb-2 text-sm font-semibold">📡 Signals</p>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[380px] text-sm">
             <tbody>
               {data.signals.map((s, i) => (
                 <tr key={i} className="border-t border-border/60 first:border-0">
@@ -136,6 +137,7 @@ export default function PricingResult({ data }: { data: Pricing }) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

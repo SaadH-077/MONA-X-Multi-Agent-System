@@ -35,7 +35,8 @@ export default function AnalyticsResult({ data }: { data: Analytics }) {
           <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
             <Target className="h-4 w-4 text-accent" /> Segments (RFM + affinity)
           </p>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[420px] text-sm">
             <thead>
               <tr className="text-left text-xs text-muted">
                 <th className="py-1.5 pr-3 font-medium">Segment</th>
@@ -57,6 +58,7 @@ export default function AnalyticsResult({ data }: { data: Analytics }) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
