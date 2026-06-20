@@ -1,8 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Phone, MessageSquare, Check, X, Copy, Trophy } from "lucide-react";
+import { Phone, MessageSquare, Check, X, Copy, Trophy, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/* Deterministic avatar per name (so the same nurse always gets the same face). */
+function avatarFor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 70;
+  return `https://i.pravatar.cc/80?img=${h + 1}`;
+}
 
 type Candidate = {
   name: string;
@@ -53,14 +60,22 @@ export default function ShiftResult({ data }: { data: Shift }) {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <span
-                    className={cn(
-                      "grid h-7 w-7 place-items-center rounded-full text-xs font-bold",
-                      i === 0 ? "bg-accent text-white" : "bg-surface-2 text-muted",
-                    )}
-                  >
-                    {i + 1}
-                  </span>
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={avatarFor(c.name)}
+                      alt={c.name}
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                    <span
+                      className={cn(
+                        "absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full text-[10px] font-bold ring-2 ring-surface",
+                        i === 0 ? "bg-accent text-white" : "bg-surface-2 text-muted",
+                      )}
+                    >
+                      {i + 1}
+                    </span>
+                  </div>
                   <div>
                     <p className="font-semibold">{c.name}</p>
                     <p className="text-xs text-muted">
@@ -108,8 +123,12 @@ export default function ShiftResult({ data }: { data: Shift }) {
             <MessageSquare className="h-4 w-4 text-accent" /> Ready-to-send messages
           </p>
           <div className="space-y-2">
-            {data.draftedMessage && <SmsCard label="To #1 pick" text={data.draftedMessage} />}
-            {data.backupMessage && <SmsCard label="To backup" text={data.backupMessage} />}
+            {data.draftedMessage && (
+              <SmsCard label="To #1 pick" text={data.draftedMessage} phone={cands[0]?.phone} />
+            )}
+            {data.backupMessage && (
+              <SmsCard label="To backup" text={data.backupMessage} phone={cands[1]?.phone} />
+            )}
           </div>
         </div>
       )}
@@ -147,8 +166,13 @@ export default function ShiftResult({ data }: { data: Shift }) {
   );
 }
 
-function SmsCard({ label, text }: { label: string; text: string }) {
+function SmsCard({ label, text, phone }: { label: string; text: string; phone?: string }) {
   const [copied, setCopied] = useState(false);
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(
+    "Shift cover request — UKS HR",
+  )}&body=${encodeURIComponent(text)}`;
+  const smsUrl = phone ? `sms:${phone.replace(/\s/g, "")}?body=${encodeURIComponent(text)}` : null;
+
   return (
     <div className="rounded-xl border border-border bg-background p-3">
       <div className="mb-1 flex items-center justify-between">
@@ -165,6 +189,24 @@ function SmsCard({ label, text }: { label: string; text: string }) {
         </button>
       </div>
       <p className="text-sm">{text}</p>
+      <div className="mt-2 flex gap-2">
+        <a
+          href={gmailUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white"
+        >
+          <Mail className="h-3.5 w-3.5" /> Send via Gmail
+        </a>
+        {smsUrl && (
+          <a
+            href={smsUrl}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:border-accent"
+          >
+            <MessageSquare className="h-3.5 w-3.5" /> Send SMS
+          </a>
+        )}
+      </div>
     </div>
   );
 }

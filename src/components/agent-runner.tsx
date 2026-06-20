@@ -15,15 +15,17 @@ import {
   History,
   Clock,
 } from "lucide-react";
-import { getAgent, getMeta } from "@/lib/agents";
+import { getAgent, getMeta, localizedAgent } from "@/lib/agents";
 import { useLang } from "@/components/language-provider";
 import ReelPreview from "@/components/reel-preview";
 import ShiftBuilder from "@/components/shift-builder";
 import AgentChart from "@/components/agent-chart";
 import InvoiceResult from "@/components/results/invoice-result";
 import ShiftResult from "@/components/results/shift-result";
+import PermitResult from "@/components/results/permit-result";
 import Flashcards from "@/components/flashcards";
 import EmailIntake from "@/components/email-intake";
+import DecisionFlow from "@/components/decision-flow";
 
 /** Tolerant JSON extraction. Handles raw JSON, ```fences```, and arrays
    (takes the first object — e.g. a manifest CSV listing several invoices). */
@@ -147,6 +149,7 @@ export default function AgentRunner({ slug }: { slug: string }) {
   if (!agent) return <p className="text-muted">Unknown agent.</p>;
 
   const meta = getMeta(slug);
+  const loc = localizedAgent(slug, agent.title, agent.blurb, agent.tag, lang);
   const showText = agent.inputMode === "text" || agent.inputMode === "both";
   const showFile = agent.inputMode === "file" || agent.inputMode === "both";
   const Icon = agent.icon;
@@ -216,12 +219,12 @@ export default function AgentRunner({ slug }: { slug: string }) {
               {meta.codename}
             </h1>
             <span className="rounded-full border border-border bg-surface-2 px-2.5 py-0.5 text-xs text-muted">
-              {agent.tag}
+              {loc.tag}
             </span>
           </div>
-          <p className="text-sm font-medium">{agent.title}</p>
+          <p className="text-sm font-medium">{loc.title}</p>
           <p className="text-xs text-accent">{agent.customer}</p>
-          <p className="mt-1 text-sm text-muted">{agent.blurb}</p>
+          <p className="mt-1 text-sm text-muted">{loc.blurb}</p>
         </div>
       </div>
 
@@ -261,7 +264,18 @@ export default function AgentRunner({ slug }: { slug: string }) {
 
       {/* Input */}
       <div className="glass space-y-3 rounded-2xl p-5">
-        {slug === "invoice" && <EmailIntake onPick={setText} />}
+        {slug === "invoice" && (
+          <EmailIntake
+            onText={(body) => {
+              setText(body);
+              setFile(null);
+            }}
+            onFile={(f) => {
+              setFile(f);
+              setText("");
+            }}
+          />
+        )}
         {agent.builder === "shift" && <ShiftBuilder onCompose={setText} />}
 
         {showText && (
@@ -364,6 +378,8 @@ export default function AgentRunner({ slug }: { slug: string }) {
               <StructuredOr raw={output} render={(d) => <InvoiceResult data={d} />} />
             ) : agent.kind === "shift" ? (
               <StructuredOr raw={output} render={(d) => <ShiftResult data={d} />} />
+            ) : agent.kind === "permit" ? (
+              <StructuredOr raw={output} render={(d) => <PermitResult data={d} />} />
             ) : (
               <Md>{output}</Md>
             )}
@@ -371,6 +387,7 @@ export default function AgentRunner({ slug }: { slug: string }) {
           {slug === "interview" && (text || file) && (
             <Flashcards context={text || file?.name || ""} />
           )}
+          {slug === "cv-fraud" && <DecisionFlow />}
         </div>
       )}
     </div>

@@ -30,7 +30,7 @@ export type Agent = {
   textLabel?: string;
   filePrompt?: string;
   fileAccept?: string;
-  kind: "markdown" | "reel" | "invoice" | "shift";
+  kind: "markdown" | "reel" | "invoice" | "shift" | "permit";
   json?: boolean;
   sample?: string;
   quickFills?: { label: string; value: string }[];
@@ -92,6 +92,25 @@ export const AGENT_META: Record<string, { codename: string; color: string }> = {
 };
 export const getMeta = (slug: string) =>
   AGENT_META[slug] ?? { codename: slug.toUpperCase(), color: "#2b7fff" };
+
+/* German translations of the customer-facing title/blurb/tag for each agent,
+   so the EN/DE toggle translates the visible cards and headers. */
+export const AGENT_DE: Record<string, { title: string; blurb: string; tag: string }> = {
+  invoice: { title: "Rechnungsverarbeitung", tag: "Finanz-Automatisierung", blurb: "Liest eine Lieferantenrechnung, extrahiert jedes Feld, leitet sie an die richtige Abteilung weiter und prüft, ob sie freigegeben werden kann." },
+  shift: { title: "Schichtvertretung", tag: "Handelnder Agent", blurb: "Melden Sie einen Ausfall — findet qualifiziertes, verfügbares Personal unter Beachtung von Ruhezeiten und Überstunden und verfasst die Nachricht." },
+  permit: { title: "Arbeitserlaubnis-Prüfung", tag: "Dokumentenprüfung", blurb: "Dokument hochladen — bestätigt, ob es eine gültige deutsche Aufenthalts-/Arbeitserlaubnis ist, mit Konfidenz und Gültigkeitsdatum." },
+  "cv-fraud": { title: "Lebenslauf- & Zertifikatsprüfung", tag: "Betrugserkennung", blurb: "Prüft Lebenslauf/Zertifikat auf KI-Erzeugung, Zeitachsen-Widersprüche und unplausible Angaben — mit Betrugsrisiko-Score." },
+  interview: { title: "Interview-Unterstützung", tag: "Einstellungs-Copilot", blurb: "Stellenanzeige einfügen — eine nicht-technische Führungskraft erhält verständliche Fragen, gute vs. schwache Antworten und Warnsignale." },
+  reel: { title: "Reel / Filmmacher", tag: "Marketing-Inhalte", blurb: "Erstellt einen Kurzvideo-Plan und zeigt ihn in den TikTok/Instagram-Sicherheitszonen." },
+  analytics: { title: "Zielgruppen-Analyse", tag: "Kundenanalyse", blurb: "Verwandelt Produkt-/Segmentdaten in Segmente, Verhaltensmuster und das beste Sendefenster pro Segment — mit Wirkungsmessung." },
+  pricing: { title: "Dynamische Preisgestaltung", tag: "Signalbasierte Preise", blurb: "Empfiehlt einen Preis aus externen Signalen innerhalb sicherer Grenzen — mit nachvollziehbarer, protokollierter Begründung." },
+  gap: { title: "Wettbewerbslücken-Analyse", tag: "Wettbewerbsanalyse", blurb: "Vergleicht das Sortiment mit Wettbewerbern auf einem Bedarf×Format-Raster und zeigt die lohnenden Marktlücken auf." },
+  "email-secure": { title: "Sichere E-Mail & Dokumente", tag: "Prompt-Injection-resistent", blurb: "Verarbeitet Bewerber-E-Mails sicher, wehrt Prompt-Injection-Versuche ab und prüft, ob alle erforderlichen Dokumente vorhanden sind." },
+};
+export function localizedAgent(slug: string, title: string, blurb: string, tag: string, lang: "en" | "de") {
+  if (lang === "de" && AGENT_DE[slug]) return AGENT_DE[slug];
+  return { title, blurb, tag };
+}
 
 export const AGENTS: Agent[] = [
   {
@@ -255,43 +274,68 @@ Rank 3–5 eligible candidates best-first (highest score first). "headroomHrs" =
     inputMode: "file",
     filePrompt: "Upload a work permit (PDF or image)",
     fileAccept: "image/*,.pdf",
-    kind: "markdown",
+    kind: "permit",
+    json: true,
     system: `You validate German work/residence permits (Aufenthaltstitel) for a staffing agency that places international candidates. Read the attached document.
 
-**Today's date is ${TODAY}.** Use it to decide whether the permit is still valid or EXPIRED — this is the most important check.
+**Today's date is ${TODAY}.** Use it to decide whether the permit is still valid or EXPIRED — the most important check.
 
-IMPORTANT: These documents are test specimens and carry a watermark like "SYNTHETISCHE TESTDATEN / SPECIMEN / NOT A GENUINE DOCUMENT". **Ignore that watermark completely** — validate the document AS IF it were genuine, based only on its actual permit content. Do NOT deny a permit because of the test watermark.
+IMPORTANT: These are test specimens with a watermark like "SYNTHETISCHE TESTDATEN / SPECIMEN / NOT A GENUINE DOCUMENT". **Ignore that watermark** — validate AS IF genuine, based only on the permit content. Never deny because of the test watermark.
 
-Output easy-to-read markdown, starting with a one-line headline:
-**Headline:** e.g. "✅ Valid work permit · valid until 14.08.2027 · employment permitted" OR "❌ Expired permit · expired 02.05.2024".
-Then:
-**Is this a work permit?** ✅ Yes / ❌ No — **confidence %**.
-**Holder** · **Document no.** · **Nationality** · **Permit category** · **Legal basis** (e.g. § 18a AufenthG).
-**Valid until** (date) — and is it **currently valid** or **EXPIRED** as of ${TODAY}?
-**Work authorisation** — does it permit employment? (e.g. "Beschäftigung gestattet" / "Erwerbstätigkeit gestattet" = yes; "nicht gestattet" = no).
-**Red flags** — only real ones: expired, employment not permitted, inconsistent dates, missing key fields, signs of tampering. (NOT the test watermark.)
-**Verdict** — **✅ CONFIRM** (genuine-format permit, currently valid, permits employment) or **❌ DENY** (expired, not a permit, or employment not authorised), in one line with the reason. If it is not a permit at all, say so plainly.
-
-## 🔍 What I based this on
-A short plain-language list of the exact checks behind the verdict, each marked ✅ / ⚠️ / ❌, so the customer sees the reasoning:
-- **Document type** — is it a recognised German residence/work title (Aufenthaltstitel / Blaue Karte EU)?
-- **Validity date** — is "valid until" still in the future compared to today (${TODAY})?
-- **Employment authorisation** — does the wording actually permit work?
-- **Field consistency** — do the name, dates, legal basis and issuing authority look complete and consistent?`,
+Respond with ONLY valid JSON (no prose, no fences) in EXACTLY this shape:
+{
+  "isWorkPermit": true|false,
+  "docType": "what the document actually is (e.g. Aufenthaltserlaubnis, Blaue Karte EU, passport, other)",
+  "verdict": "confirm" | "deny",
+  "headline": "one line, e.g. 'Valid work permit — employment permitted until 14.08.2027'",
+  "confidence": 0-100,
+  "holder": string|null,
+  "documentNo": string|null,
+  "nationality": string|null,
+  "dob": string|null,
+  "category": string|null,
+  "legalBasis": string|null,
+  "issuingAuthority": string|null,
+  "validUntil": "DD.MM.YYYY"|null,
+  "validFrom": "DD.MM.YYYY"|null,
+  "isCurrentlyValid": true|false,
+  "daysRemaining": number (negative if expired, relative to ${TODAY}),
+  "employmentPermitted": true|false,
+  "employmentNote": "the exact wording found, e.g. 'Beschäftigung gestattet'",
+  "checks": [{"label": string, "status": "pass"|"warn"|"fail", "note": string}],
+  "redFlags": [string],
+  "keywords": [string]
+}
+"checks" MUST cover: document type recognised, validity date vs today, employment authorisation, field consistency/completeness. "keywords" = 4-6 key terms extracted from the document (legal basis, permit type, authority, etc.). Compute daysRemaining as (validUntil − ${TODAY}) in days. confidence reflects how certain you are it's a genuine-format permit and the extraction quality.`,
     buildPrompt: () => "Validate the attached document as a German work permit.",
-    demo: `**Is this a work permit?** ✅ Yes — **confidence 95%**
-
-- **Holder:** Amara Chidi Okonkwo · **Doc no.:** LP4K8T2Q1
-- **Nationality:** Nigeria (NGA) · **DOB:** 14.03.1992
-- **Category:** Aufenthaltserlaubnis (befristet) · **Legal basis:** § 18a AufenthG — Fachkraft mit Berufsausbildung
-- **Valid until:** **14.08.2027** — ✅ currently valid
-- **Work authorisation:** ✅ "Beschäftigung gestattet" — dependent employment permitted
-
-**Red flags:** none affecting validity. (Document is marked as a synthetic test specimen.)
-
-**Verdict: ✅ CONFIRM** — holder is eligible for dependent employment until 14.08.2027.
-
-*Demo output — add GEMINI_API_KEY to validate any uploaded permit.*`,
+    demo: JSON.stringify({
+      isWorkPermit: true,
+      docType: "Aufenthaltserlaubnis (befristet)",
+      verdict: "confirm",
+      headline: "Valid work permit — employment permitted until 14.08.2027",
+      confidence: 96,
+      holder: "Amara Chidi Okonkwo",
+      documentNo: "LP4K8T2Q1",
+      nationality: "Nigeria (NGA)",
+      dob: "14.03.1992",
+      category: "Aufenthaltserlaubnis (befristet)",
+      legalBasis: "§ 18a AufenthG — Fachkraft mit Berufsausbildung",
+      issuingAuthority: "Ausländerbehörde Saarbrücken",
+      validUntil: "14.08.2027",
+      validFrom: "15.08.2024",
+      isCurrentlyValid: true,
+      daysRemaining: 420,
+      employmentPermitted: true,
+      employmentNote: "Beschäftigung gestattet",
+      checks: [
+        { label: "Recognised German residence title", status: "pass", note: "Aufenthaltserlaubnis under § 18a AufenthG" },
+        { label: "Validity date vs today", status: "pass", note: "Valid until 14.08.2027" },
+        { label: "Employment authorisation", status: "pass", note: "'Beschäftigung gestattet'" },
+        { label: "Field consistency", status: "pass", note: "Name, dates, authority all present & consistent" },
+      ],
+      redFlags: [],
+      keywords: ["§ 18a AufenthG", "Fachkraft", "Aufenthaltserlaubnis", "Beschäftigung gestattet", "befristet"],
+    }),
   },
 
   {
