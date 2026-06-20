@@ -44,10 +44,16 @@ export default function BootSpiral() {
           <div className="grid-bg pointer-events-none absolute inset-0 opacity-30" />
 
           <div className="relative h-[540px] w-[540px]">
+            {/* ring guide */}
+            <div
+              className="absolute left-1/2 top-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full border"
+              style={{ borderColor: "var(--border)" }}
+            />
             {AGENTS.map((a, i) => {
               const meta = getMeta(a.slug);
-              const angle = i * 0.86;
-              const radius = 60 + i * 21;
+              // Evenly spaced on a full circle (start at top, go clockwise).
+              const angle = (i / AGENTS.length) * Math.PI * 2 - Math.PI / 2;
+              const radius = 200;
               const x = Math.cos(angle) * radius;
               const y = Math.sin(angle) * radius;
               const on = i < active;
@@ -56,23 +62,23 @@ export default function BootSpiral() {
                   key={a.slug}
                   className="absolute left-1/2 top-1/2"
                   initial={{ opacity: 0, scale: 0.2, x: 0, y: 0 }}
-                  animate={{ opacity: on ? 1 : 0.25, scale: 1, x, y }}
-                  transition={{ delay: 0.4 + i * 0.18, type: "spring", stiffness: 90, damping: 13 }}
+                  animate={{ opacity: on ? 1 : 0.4, scale: 1, x, y }}
+                  transition={{ delay: 0.3 + i * 0.12, type: "spring", stiffness: 120, damping: 14 }}
                 >
                   <div className="flex -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center">
                     <span
-                      className="grid h-9 w-9 place-items-center rounded-xl transition-all"
+                      className="grid h-12 w-12 place-items-center rounded-2xl transition-all duration-300"
                       style={{
-                        backgroundColor: on ? meta.color : "transparent",
-                        color: on ? "#fff" : meta.color,
-                        boxShadow: on ? `0 0 18px ${meta.color}` : "none",
-                        border: `1px solid ${meta.color}55`,
+                        backgroundColor: on ? meta.color : "var(--surface-2)",
+                        color: on ? "#fff" : "var(--muted)",
+                        boxShadow: on ? `0 0 26px ${meta.color}, 0 0 0 2px ${meta.color}` : "none",
+                        border: on ? "none" : `1px solid var(--border)`,
                       }}
                     >
-                      <a.icon className="h-5 w-5" />
+                      <a.icon className="h-6 w-6" />
                     </span>
                     <p
-                      className="mt-1 text-[10px] font-bold tracking-[0.18em]"
+                      className="mt-1.5 text-[11px] font-bold tracking-[0.18em] transition-colors"
                       style={{ color: on ? meta.color : "var(--muted)" }}
                     >
                       {meta.codename}

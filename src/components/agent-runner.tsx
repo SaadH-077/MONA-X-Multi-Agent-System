@@ -26,6 +26,7 @@ import PermitResult from "@/components/results/permit-result";
 import Flashcards from "@/components/flashcards";
 import EmailIntake from "@/components/email-intake";
 import DecisionFlow from "@/components/decision-flow";
+import ActionBar from "@/components/action-bar";
 
 /** Tolerant JSON extraction. Handles raw JSON, ```fences```, and arrays
    (takes the first object — e.g. a manifest CSV listing several invoices). */
@@ -371,7 +372,7 @@ export default function AgentRunner({ slug }: { slug: string }) {
               <Sparkles className="h-3 w-3" /> {t("demoBadge")}
             </div>
           )}
-          <div className="glass rounded-2xl p-6">
+          <div id="agent-result" className="glass rounded-2xl p-6">
             {agent.kind === "reel" ? (
               <ReelRenderer raw={output} />
             ) : agent.kind === "invoice" ? (
@@ -384,6 +385,10 @@ export default function AgentRunner({ slug }: { slug: string }) {
               <Md>{output}</Md>
             )}
           </div>
+
+          {/* The ACTION each agent takes with its result */}
+          <ActionBar slug={slug} raw={output} parsed={parseJson(output)} />
+
           {slug === "interview" && (text || file) && (
             <Flashcards context={text || file?.name || ""} />
           )}

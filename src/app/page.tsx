@@ -1,14 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { ArrowRight, Sparkles, Zap } from "lucide-react";
 import { AGENTS, getMeta, localizedAgent } from "@/lib/agents";
 import MonaX from "@/components/brand";
 import BootSpiral from "@/components/boot-spiral";
 import { useLang } from "@/components/language-provider";
-
-const HeroOrb = dynamic(() => import("@/components/three/hero-orb"), { ssr: false });
 
 export default function Home() {
   const { t, lang } = useLang();
@@ -26,15 +23,9 @@ export default function Home() {
             MONA AI Hackathon 2026 · Gemini 2.5
           </span>
 
-          <div className="relative mt-6">
-            {/* Hovering 3D element behind the wordmark */}
-            <div className="pointer-events-none absolute left-1/2 top-1/2 h-[340px] w-[340px] -translate-x-1/2 -translate-y-1/2 opacity-80">
-              <HeroOrb />
-            </div>
-            <h1 className="relative">
-              <MonaX className="block text-7xl leading-none sm:text-8xl" />
-            </h1>
-          </div>
+          <h1 className="mt-6">
+            <MonaX className="block text-7xl leading-none sm:text-8xl" />
+          </h1>
           <p className="mt-4 text-2xl font-bold tracking-tight">{t("tagline")}</p>
           <p className="mx-auto mt-4 max-w-xl text-lg text-muted">{t("subtitle")}</p>
 
