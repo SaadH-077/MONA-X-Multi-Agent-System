@@ -59,6 +59,9 @@ Browser (Next.js 16 / React 19, client components)
 **Key engineering decisions**
 - **Action-first** — each agent ends in a real action (email, file, price change,
   background check, AI media), not just a text summary.
+- **Polished PDF deliverables** — every agent generates a branded, print-ready PDF
+  report (`src/lib/reports.ts`) with a dedicated layout, coloured tables and status
+  banners; SENTINEL produces a formal stamped validation certificate.
 - **Multi-format ingestion** — Gemini reads PDFs/images natively; DOCX/XLSX/CSV are
   extracted server-side first, so every file type works.
 - **Structured pipelines per agent** — invoice/shift/permit/pricing/gap/secure/
@@ -118,6 +121,17 @@ npm run dev                    # http://localhost:3000
 Works in demo mode with no keys (canned outputs). Add `GEMINI_API_KEY` to go live.
 Test files (invoices, permits, CVs, certificates, roster, Dr. Theiss pack) are not
 committed — upload them via each agent.
+
+### Local demo over your network (LAN / `ipconfig`)
+`npm run dev` and `npm run start` bind to `0.0.0.0`, so others on the same network
+can open the app at `http://<your-ipv4>:3000` (find it with `ipconfig`). On the
+first run, **allow Node.js through Windows Defender Firewall** (Private networks)
+or LAN devices can't connect. Note: the Gmail agents (LEDGER, AEGIS) work best on
+`localhost` since the OAuth redirect is host-specific; all other agents work over
+the IP. Downloads/PDFs work over LAN HTTP.
+
+> **Pitching it?** See **[PITCH.md](./PITCH.md)** — a timed 5-minute pitch script,
+> the architecture explained simply, and a per-agent breakdown.
 
 ---
 
