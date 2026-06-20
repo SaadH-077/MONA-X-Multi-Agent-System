@@ -1,0 +1,192 @@
+@import "tailwindcss";
+
+/* ----------------------------------------------------------------------------
+   Design tokens — dark-first premium AI aesthetic.
+   Tailwind v4 reads these via @theme; use e.g. bg-background, text-accent.
+---------------------------------------------------------------------------- */
+/* MONA AI palette: deep navy base, bright blue, lavender, coral accent. */
+:root {
+  --background: #07081a;
+  --surface: #0d1030;
+  --surface-2: #161a3d;
+  --border: #262a52;
+  --foreground: #eef0fb;
+  --muted: #9498c4;
+
+  --accent: #2b7fff;       /* MONA blue    */
+  --accent-2: #c4b7f4;     /* lavender     */
+  --accent-3: #ff8a5c;     /* coral        */
+
+  --radius: 16px;
+}
+
+.light {
+  --background: #f5f7fc;
+  --surface: #ffffff;
+  --surface-2: #eef1f9;
+  --border: #dde2f0;
+  --foreground: #0a0c24;
+  --muted: #5a6086;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-3: var(--accent-3);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --radius-xl: var(--radius);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ambient gradient backdrop used behind the hero / dashboard */
+.aurora {
+  background:
+    radial-gradient(60% 50% at 15% 0%, rgba(43, 127, 255, 0.28), transparent 70%),
+    radial-gradient(50% 50% at 85% 10%, rgba(196, 183, 244, 0.20), transparent 70%),
+    radial-gradient(60% 60% at 50% 100%, rgba(255, 138, 92, 0.14), transparent 70%);
+}
+
+/* Frosted glass card */
+.glass {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  backdrop-filter: blur(14px);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(110deg, var(--accent), var(--accent-2) 60%, var(--accent-3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Soft glow ring on hover */
+.glow {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent),
+    0 8px 40px -8px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+/* Thin custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.animate-pulse-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
+
+/* MONA-X wordmark — gradient cycles on its own, forever. */
+@keyframes monax-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.monax {
+  background-image: linear-gradient(90deg, #2b7fff, #9b6cff, #ff6cc4, #19d3da, #2b7fff);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: monax-shift 6s linear infinite;
+}
+
+/* Rendered-markdown styling for agent output (customer-facing). */
+.md { font-size: 0.92rem; line-height: 1.6; color: var(--foreground); }
+.md > :first-child { margin-top: 0; }
+.md h1, .md h2, .md h3 { font-weight: 700; margin: 1.1em 0 0.5em; }
+.md h1 { font-size: 1.3rem; }
+.md h2 { font-size: 1.12rem; }
+.md h3 { font-size: 1rem; }
+.md p { margin: 0.5em 0; }
+.md strong { color: var(--foreground); font-weight: 700; }
+.md ul, .md ol { margin: 0.5em 0; padding-left: 1.25em; }
+.md li { margin: 0.2em 0; }
+.md ul { list-style: disc; }
+.md ol { list-style: decimal; }
+.md a { color: var(--accent); text-decoration: underline; }
+.md code {
+  background: var(--surface-2);
+  padding: 0.1em 0.4em;
+  border-radius: 6px;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.85em;
+}
+.md blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.9em;
+  margin: 0.6em 0;
+  color: var(--muted);
+}
+.md table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  font-size: 0.86rem;
+}
+.md th, .md td {
+  border: 1px solid var(--border);
+  padding: 0.45em 0.65em;
+  text-align: left;
+  vertical-align: top;
+}
+.md th { background: var(--surface-2); font-weight: 600; }
+
+/* Subtle dotted grid backdrop */
+.grid-bg {
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--border) 90%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 40%, transparent 100%);
+}
+
+/* Pretty line wrapping for headlines */
+.text-balance { text-wrap: balance; }
+
+/* Framed container for the 3D canvas — dark from the very first paint so the
+   WebGL surface never flashes white while it boots. */
+.scene-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(70% 70% at 50% 35%, #11143a 0%, #0a0c24 55%, #07081a 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 30px 80px -30px rgba(43, 127, 255, 0.35);
+}
+
+/* Card hover lift used across feature cards */
+.lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 50px -12px color-mix(in srgb, var(--accent) 35%, transparent);
+}
