@@ -42,6 +42,7 @@ export async function POST(req: Request) {
       file: inline,
       json: agent.json,
       language: language === "de" ? "de" : "en",
+      search: agent.webSearch,
     });
     return Response.json({ output, demo: false });
   } catch (err) {

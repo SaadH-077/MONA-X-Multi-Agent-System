@@ -123,12 +123,8 @@ export default function ShiftResult({ data }: { data: Shift }) {
             <MessageSquare className="h-4 w-4 text-accent" /> Ready-to-send messages
           </p>
           <div className="space-y-2">
-            {data.draftedMessage && (
-              <SmsCard label="To #1 pick" text={data.draftedMessage} phone={cands[0]?.phone} />
-            )}
-            {data.backupMessage && (
-              <SmsCard label="To backup" text={data.backupMessage} phone={cands[1]?.phone} />
-            )}
+            {data.draftedMessage && <SmsCard label="To #1 pick" text={data.draftedMessage} />}
+            {data.backupMessage && <SmsCard label="To backup" text={data.backupMessage} />}
           </div>
         </div>
       )}
@@ -166,12 +162,15 @@ export default function ShiftResult({ data }: { data: Shift }) {
   );
 }
 
-function SmsCard({ label, text, phone }: { label: string; text: string; phone?: string }) {
+function SmsCard({ label, text }: { label: string; text: string }) {
   const [copied, setCopied] = useState(false);
   const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(
     "Shift cover request — UKS HR",
   )}&body=${encodeURIComponent(text)}`;
-  const smsUrl = phone ? `sms:${phone.replace(/\s/g, "")}?body=${encodeURIComponent(text)}` : null;
+  // Roster numbers are synthetic — always route the demo SMS to the operator's
+  // real phone so it can be shown sending live.
+  const DEMO_PHONE = "+4917663174777";
+  const smsUrl = `sms:${DEMO_PHONE}?body=${encodeURIComponent(text)}`;
 
   return (
     <div className="rounded-xl border border-border bg-background p-3">
@@ -198,14 +197,12 @@ function SmsCard({ label, text, phone }: { label: string; text: string; phone?: 
         >
           <Mail className="h-3.5 w-3.5" /> Send via Gmail
         </a>
-        {smsUrl && (
-          <a
-            href={smsUrl}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:border-accent"
-          >
-            <MessageSquare className="h-3.5 w-3.5" /> Send SMS
-          </a>
-        )}
+        <a
+          href={smsUrl}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:border-accent"
+        >
+          <MessageSquare className="h-3.5 w-3.5" /> Send SMS
+        </a>
       </div>
     </div>
   );

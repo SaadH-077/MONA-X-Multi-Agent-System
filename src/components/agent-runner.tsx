@@ -14,6 +14,7 @@ import {
   Sparkles,
   History,
   Clock,
+  Globe,
 } from "lucide-react";
 import { getAgent, getMeta, localizedAgent } from "@/lib/agents";
 import { useLang } from "@/components/language-provider";
@@ -23,6 +24,9 @@ import AgentChart from "@/components/agent-chart";
 import InvoiceResult from "@/components/results/invoice-result";
 import ShiftResult from "@/components/results/shift-result";
 import PermitResult from "@/components/results/permit-result";
+import PricingResult from "@/components/results/pricing-result";
+import GapResult from "@/components/results/gap-result";
+import SecureResult from "@/components/results/secure-result";
 import Flashcards from "@/components/flashcards";
 import EmailIntake from "@/components/email-intake";
 import DecisionFlow from "@/components/decision-flow";
@@ -127,6 +131,16 @@ export default function AgentRunner({ slug }: { slug: string }) {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [searchStep, setSearchStep] = useState(0);
+  const webSearch = !!agent?.webSearch;
+
+  // "Searching the web" staged status for web-search agents.
+  useEffect(() => {
+    if (!loading || !webSearch) return;
+    setSearchStep(0);
+    const timers = [0, 1, 2].map((s) => setTimeout(() => setSearchStep(s), s * 1300));
+    return () => timers.forEach(clearTimeout);
+  }, [loading, webSearch]);
 
   const histKey = `monax-hist-${slug}`;
   useEffect(() => {
@@ -369,6 +383,15 @@ export default function AgentRunner({ slug }: { slug: string }) {
           )}
           {loading ? t("running") : t("runAgent")}
         </button>
+
+        {loading && webSearch && (
+          <div className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/5 px-4 py-2.5 text-sm">
+            <Globe className="h-4 w-4 animate-spin text-accent" />
+            <span>
+              {["🔎 Searching the web for live signals…", "📡 Reading weather, events & fixtures…", "🧮 Building targeting plan…"][searchStep]}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Result */}
@@ -385,7 +408,11 @@ export default function AgentRunner({ slug }: { slug: string }) {
               <Sparkles className="h-3 w-3" /> {t("demoBadge")}
             </div>
           )}
-          <div id="agent-result" className="glass rounded-2xl p-6">
+          <div
+            id="agent-result"
+            className="glass rounded-2xl p-6"
+            style={{ "--accent": meta.color } as React.CSSProperties}
+          >
             {agent.kind === "reel" ? (
               <ReelRenderer raw={output} />
             ) : agent.kind === "invoice" ? (
@@ -394,13 +421,21 @@ export default function AgentRunner({ slug }: { slug: string }) {
               <StructuredOr raw={output} render={(d) => <ShiftResult data={d} />} />
             ) : agent.kind === "permit" ? (
               <StructuredOr raw={output} render={(d) => <PermitResult data={d} />} />
+            ) : agent.kind === "pricing" ? (
+              <StructuredOr raw={output} render={(d) => <PricingResult data={d} />} />
+            ) : agent.kind === "gap" ? (
+              <StructuredOr raw={output} render={(d) => <GapResult data={d} />} />
+            ) : agent.kind === "secure" ? (
+              <StructuredOr raw={output} render={(d) => <SecureResult data={d} />} />
             ) : (
               <Md>{output}</Md>
             )}
           </div>
 
-          {/* The ACTION each agent takes with its result */}
-          <ActionBar slug={slug} raw={output} parsed={parseJson(output)} />
+          {/* The ACTION each agent takes (pricing, gap & secure embed their own) */}
+          {slug !== "pricing" && slug !== "gap" && slug !== "email-secure" && (
+            <ActionBar slug={slug} raw={output} parsed={parseJson(output)} />
+          )}
 
           {slug === "interview" && (text || file) && (
             <Flashcards context={text || file?.name || ""} />

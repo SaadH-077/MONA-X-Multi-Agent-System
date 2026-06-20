@@ -74,6 +74,7 @@ async function callLLM(opts: {
   file?: GeminiFile | null;
   json?: boolean;
   language?: "en" | "de";
+  search?: boolean;
   model?: string;
 }): Promise<string> {
   const system = buildSystem(opts);
@@ -93,6 +94,8 @@ async function callLLM(opts: {
 
   const body: Record<string, unknown> = { contents: [{ role: "user", parts }] };
   if (system) body.systemInstruction = { parts: [{ text: system }] };
+  // Real Google Search grounding (can't combine with JSON response mode).
+  if (opts.search && !opts.json) body.tools = [{ google_search: {} }];
   body.generationConfig = {
     temperature: 0.3,
     maxOutputTokens: 8192,
