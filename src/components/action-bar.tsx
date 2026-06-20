@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { getMeta } from "@/lib/agents";
 import { downloadCSV, downloadICS, gmailCompose, printReport } from "@/lib/actions";
+import { esc } from "@/lib/actions";
 
 /* Renders the concrete ACTION(s) for an agent — what it *does* with the result,
    beyond displaying text. Every agent can at least produce a PDF report;
@@ -110,14 +111,64 @@ export default function ActionBar({
           ]),
       });
       break;
-    case "permit":
+    case "permit": {
+      const p = parsed ?? {};
+      const row = (k: string, v: unknown) =>
+        `<tr><th style="width:38%">${esc(k)}</th><td>${esc(v ?? "—")}</td></tr>`;
+      const confirm = p.verdict === "confirm";
       btns.push({
         label: "Download validation certificate (PDF)",
         icon: FileText,
         primary: true,
-        onClick: () => downloadReport("Work Permit Validation Certificate"),
+        onClick: () => {
+          const w = window.open("", "_blank", "width=900,height=1100");
+          if (!w) return;
+          w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Work Permit Validation Certificate</title>
+<style>
+  *{box-sizing:border-box} body{font-family:Georgia,'Times New Roman',serif;color:#14141f;margin:0;padding:54px;max-width:820px}
+  .doc{border:3px double #1b2a6b;padding:36px 40px;position:relative}
+  .crest{font-size:11px;letter-spacing:3px;color:#1b2a6b;text-align:center;font-family:Arial,sans-serif;font-weight:700}
+  h1{font-size:22px;text-align:center;margin:6px 0 2px;color:#1b2a6b}
+  .sub{text-align:center;color:#666;font-size:12px;margin:0 0 22px;font-family:Arial,sans-serif}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th,td{border:1px solid #c9cce0;padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:#eef1fb;color:#1b2a6b;font-family:Arial,sans-serif}
+  .verdict{margin:18px 0;padding:14px 18px;border-radius:8px;text-align:center;font-size:18px;font-weight:700;font-family:Arial,sans-serif;
+    background:${confirm ? "#e7f7ef" : "#fdeaec"};color:${confirm ? "#0b7a4b" : "#b3261e"};border:2px solid ${confirm ? "#0b7a4b" : "#b3261e"}}
+  .stamp{position:absolute;right:46px;bottom:90px;transform:rotate(-14deg);border:3px solid ${confirm ? "#0b7a4b" : "#b3261e"};
+    color:${confirm ? "#0b7a4b" : "#b3261e"};padding:6px 16px;border-radius:8px;font-family:Arial,sans-serif;font-weight:800;letter-spacing:2px;opacity:.85}
+  .sig{display:flex;justify-content:space-between;margin-top:54px;font-size:12px;color:#444;font-family:Arial,sans-serif}
+  .sig div{border-top:1px solid #999;padding-top:6px;width:42%}
+  .foot{margin-top:18px;color:#999;font-size:10px;text-align:center;font-family:Arial,sans-serif}
+</style></head><body><div class="doc">
+  <div class="crest">MONA-X · SENTINEL · DOCUMENT VALIDATION AUTHORITY</div>
+  <h1>Work Permit Validation Certificate</h1>
+  <p class="sub">Issued ${new Date().toLocaleString()} · Ref ${esc(p.documentNo ?? "—")}-${Date.now().toString().slice(-6)}</p>
+  <div class="verdict">${confirm ? "✓ VALIDATION CONFIRMED" : "✗ VALIDATION DENIED"} &nbsp;·&nbsp; Confidence ${esc(p.confidence ?? "—")}%</div>
+  <table>
+    ${row("Document type", p.docType)}
+    ${row("Holder", p.holder)}
+    ${row("Date of birth", p.dob)}
+    ${row("Nationality", p.nationality)}
+    ${row("Document number", p.documentNo)}
+    ${row("Permit category", p.category)}
+    ${row("Legal basis", p.legalBasis)}
+    ${row("Issuing authority", p.issuingAuthority)}
+    ${row("Valid from", p.validFrom)}
+    ${row("Valid until", p.validUntil)}
+    ${row("Currently valid", p.isCurrentlyValid ? "Yes" : "No")}
+    ${row("Employment permitted", p.employmentPermitted ? "Yes — " + (p.employmentNote ?? "") : "No")}
+  </table>
+  <div class="stamp">${confirm ? "APPROVED" : "REJECTED"}</div>
+  <div class="sig"><div>Automated validation · MONA-X SENTINEL</div><div>Reviewing officer (signature)</div></div>
+  <div class="foot">Computer-generated validation. Verify against the original document before relying on this certificate. Test/prototype output.</div>
+</div></body></html>`);
+          w.document.close();
+          setTimeout(() => w.print(), 350);
+        },
       });
       break;
+    }
     case "cv-fraud":
       btns.push({
         label: "Download screening report (PDF)",
