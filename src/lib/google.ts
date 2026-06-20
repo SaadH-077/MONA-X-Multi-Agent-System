@@ -14,17 +14,22 @@
 
 export const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 
+// Trim env values — pasted secrets/URLs often carry trailing spaces/newlines,
+// which silently break OAuth (redirect_uri_mismatch).
+const clientId = () => (process.env.GOOGLE_CLIENT_ID ?? "").trim();
+const clientSecret = () => (process.env.GOOGLE_CLIENT_SECRET ?? "").trim();
+
 export function googleConfigured() {
-  return !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
+  return !!clientId() && !!clientSecret();
 }
 
 export function redirectUri() {
-  return process.env.GOOGLE_REDIRECT_URI ?? "http://localhost:3000/api/gmail/callback";
+  return (process.env.GOOGLE_REDIRECT_URI ?? "http://localhost:3000/api/gmail/callback").trim();
 }
 
 export function authUrl() {
   const p = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID!,
+    client_id: clientId(),
     redirect_uri: redirectUri(),
     response_type: "code",
     scope: GMAIL_SCOPE,
@@ -40,8 +45,8 @@ export async function exchangeCode(code: string): Promise<{ access_token: string
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      client_id: clientId(),
+      client_secret: clientSecret(),
       redirect_uri: redirectUri(),
       grant_type: "authorization_code",
     }),
@@ -56,8 +61,8 @@ export async function refreshToken(refresh_token: string): Promise<string> {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       refresh_token,
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      client_id: clientId(),
+      client_secret: clientSecret(),
       grant_type: "refresh_token",
     }),
   });
