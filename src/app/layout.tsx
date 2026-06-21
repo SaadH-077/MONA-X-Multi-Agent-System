@@ -21,7 +21,10 @@ export const metadata: Metadata = {
   description:
     "A suite of 10 action-taking AI agents (Gemini 2.5) that turn real business requests into completed actions. Built at the MONA GmbH AI Hackathon 2026.",
   icons: {
-    icon: "/favicon.svg",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
   },
 };
 
