@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   if (!code) return new Response("Missing code", { status: 400 });
 
   try {
-    const tokens = await exchangeCode(code);
+    const tokens = await exchangeCode(code, req);
     // Store tokens in httpOnly cookies; redirect back to the invoice agent.
     const headers = new Headers();
     headers.append("Location", "/agents/invoice?gmail=connected");

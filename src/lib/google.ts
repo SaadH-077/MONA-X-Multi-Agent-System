@@ -4,12 +4,17 @@
    SETUP (2 min, one-time):
    1. console.cloud.google.com → create a project → APIs & Services → Enable "Gmail API".
    2. OAuth consent screen → External → add your Google account as a Test user.
-   3. Credentials → Create OAuth client ID → Web application.
-      Authorised redirect URI:  http://localhost:3000/api/gmail/callback
+   3. Credentials → Create OAuth client ID → Web application. Add BOTH authorised
+      redirect URIs (one per environment you use):
+        http://localhost:3000/api/gmail/callback
+        https://YOUR-PROD-DOMAIN/api/gmail/callback
    4. Put the client id/secret in .env.local:
         GOOGLE_CLIENT_ID=...
         GOOGLE_CLIENT_SECRET=...
-        GOOGLE_REDIRECT_URI=http://localhost:3000/api/gmail/callback   (optional; this is the default)
+
+   The redirect URI is derived automatically from the incoming request's host, so
+   the same code works on localhost and in production with NO extra env var. Only
+   set GOOGLE_REDIRECT_URI if you need to force a specific callback URL (escape hatch).
 */
 
 export const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
@@ -23,14 +28,29 @@ export function googleConfigured() {
   return !!clientId() && !!clientSecret();
 }
 
-export function redirectUri() {
-  return (process.env.GOOGLE_REDIRECT_URI ?? "http://localhost:3000/api/gmail/callback").trim();
+/* Resolve the OAuth callback URL.
+   - If GOOGLE_REDIRECT_URI is set, it wins (escape hatch for custom setups).
+   - Otherwise derive it from the incoming request's host, honouring the
+     x-forwarded-* headers that Vercel/proxies set. This makes the same build
+     work on http://localhost:3000 AND https://your-app.vercel.app with no env
+     change — and, crucially, the redirect_uri sent at /auth always matches the
+     one sent at /callback (same host), which is what Google checks. */
+export function redirectUri(req?: Request) {
+  const override = (process.env.GOOGLE_REDIRECT_URI ?? "").trim();
+  if (override) return override;
+  if (req) {
+    const url = new URL(req.url);
+    const proto = (req.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "")).split(",")[0].trim();
+    const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? url.host).split(",")[0].trim();
+    return `${proto}://${host}/api/gmail/callback`;
+  }
+  return "http://localhost:3000/api/gmail/callback";
 }
 
-export function authUrl() {
+export function authUrl(req?: Request) {
   const p = new URLSearchParams({
     client_id: clientId(),
-    redirect_uri: redirectUri(),
+    redirect_uri: redirectUri(req),
     response_type: "code",
     scope: GMAIL_SCOPE,
     access_type: "offline",
@@ -39,7 +59,7 @@ export function authUrl() {
   return `https://accounts.google.com/o/oauth2/v2/auth?${p}`;
 }
 
-export async function exchangeCode(code: string): Promise<{ access_token: string; refresh_token?: string; expires_in: number }> {
+export async function exchangeCode(code: string, req?: Request): Promise<{ access_token: string; refresh_token?: string; expires_in: number }> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -47,7 +67,7 @@ export async function exchangeCode(code: string): Promise<{ access_token: string
       code,
       client_id: clientId(),
       client_secret: clientSecret(),
-      redirect_uri: redirectUri(),
+      redirect_uri: redirectUri(req),
       grant_type: "authorization_code",
     }),
   });
