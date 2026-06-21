@@ -6,10 +6,10 @@ export default function Footer() {
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-10 text-sm text-muted sm:flex-row">
         <div className="flex items-center gap-2">
           <Boxes className="h-4 w-4 text-accent" />
-          <span className="font-medium text-foreground">Nexus</span>
-          <span>· hackathon starter</span>
+          <span className="font-medium text-foreground">MONA-X</span>
+          <span>· one suite, ten agents</span>
         </div>
-        <p>Built to ship fast. Make it yours.</p>
+        <p>Built at the MONA GmbH AI Hackathon 2026 · Gemini 2.5</p>
       </div>
     </footer>
   );

@@ -17,8 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nexus — Hackathon Starter",
-  description: "3D + AI starter kit. Built for shipping fast.",
+  title: "MONA-X — One suite. Ten agents.",
+  description:
+    "A suite of 10 action-taking AI agents (Gemini 2.5) that turn real business requests into completed actions. Built at the MONA GmbH AI Hackathon 2026.",
 };
 
 export default function RootLayout({
