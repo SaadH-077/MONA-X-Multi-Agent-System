@@ -15,7 +15,7 @@
 ![Tailwind](https://img.shields.io/badge/Tailwind_v4-38bdf8?style=flat-square&logo=tailwindcss&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=flat-square&logo=vercel)
 
-> Built **solo in 6 hours** as part of the **MONA GmbH AI Hackathon 2026**.
+> Built **solo in 7 hours** as part of the **MONA GmbH AI Hackathon 2026**.
 
 <img src="public/screenshots/00-hub.png" alt="MONA-X agent hub — all ten agents" width="900" />
 
@@ -176,5 +176,5 @@ The callback URL is **derived from the request host**, so you don't set a redire
 ---
 
 <div align="center">
-Built solo by <b><a href="https://github.com/SaadH-077">Saad Haroon Jehangir</a></b> · MONA GmbH AI Hackathon 2026
+Built solo by <b><a href="https://github.com/SaadH-077">Muhammad Saad Haroon</a></b> · MONA GmbH AI Hackathon 2026
 </div>
